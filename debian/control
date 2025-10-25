@@ -14,7 +14,7 @@ Rules-Requires-Root: no
 Package: openssl
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${perl:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: ca-certificates
 Description: Secure Sockets Layer toolkit - cryptographic utility
  This package is part of the OpenSSL project's implementation of the SSL
