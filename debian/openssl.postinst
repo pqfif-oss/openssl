@@ -6,9 +6,4 @@ then
   ln -sf /etc/ssl /usr/local/openssl/3.5.3/lib/ssl
 fi
 
-update-alternatives --install /usr/bin/openssl openssl /usr/local/openssl/3.5.3/bin/openssl 100
-
-sudo ln -sf /usr/local/openssl/3.5.3/lib/$(arch)-linux-gnu/libssl.so.3 /lib/$(arch)-linux-gnu/libssl.so.3
-sudo ln -sf /usr/local/openssl/3.5.3/lib/$(arch)-linux-gnu/libcrypto.so.3 /lib/$(arch)-linux-gnu/libcrypto.so.
-
 #DEBHELPER#
