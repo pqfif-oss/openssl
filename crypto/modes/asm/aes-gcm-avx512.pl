@@ -2592,7 +2592,7 @@ ___
     $code .= <<___;
         vpclmulqdq        \$0x01,@{[XWORD($GH1L)]},@{[XWORD($RED_POLY)]},@{[XWORD($RED_P1)]}
         vpslldq           \$8,@{[XWORD($RED_P1)]},@{[XWORD($RED_P1)]}                    # ; shift-L 2 DWs
-        vpxorq            @{[XWORD($RED_P1)]},@{[XWORD($GH1L)]},@{[XWORD($RED_P1)]}      # ; first phase of the reduction
+        vpxorq            @{[XWORD($RED_P1)]},@{[XWORD($GH1L)]},@{[XWORD($RED_P1)]}      # ; first phase of the reduct
 ___
   }
 
@@ -3222,7 +3222,7 @@ ___
     $code .= <<___;
         vpclmulqdq        \$0x01,@{[XWORD($GH1L)]},@{[XWORD($RED_POLY)]},@{[XWORD($RED_P1)]}
         vpslldq           \$8,@{[XWORD($RED_P1)]},@{[XWORD($RED_P1)]}                    # ; shift-L 2 DWs
-        vpxorq            @{[XWORD($RED_P1)]},@{[XWORD($GH1L)]},@{[XWORD($RED_P1)]}      # ; first phase of the reduction
+        vpxorq            @{[XWORD($RED_P1)]},@{[XWORD($GH1L)]},@{[XWORD($RED_P1)]}      # ; first phase of the reduct
 ___
   }
 

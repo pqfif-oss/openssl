@@ -328,14 +328,17 @@ int storeutl_main(int argc, char *argv[])
     return ret;
 }
 
-static void indent_printf(int indent, BIO *bio, const char *format, ...)
+static int indent_printf(int indent, BIO *bio, const char *format, ...)
 {
     va_list args;
+    int ret;
 
-    BIO_printf(bio, "%*s", indent, "");
     va_start(args, format);
-    BIO_vprintf(bio, format, args);
+
+    ret = BIO_printf(bio, "%*s", indent, "") + BIO_vprintf(bio, format, args);
+
     va_end(args);
+    return ret;
 }
 
 static int process(const char *uri, const UI_METHOD *uimeth, PW_CB_DATA *uidata,

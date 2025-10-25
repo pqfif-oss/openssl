@@ -1,5 +1,5 @@
 /*
- * Copyright 2003-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2003-2024 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -22,15 +22,12 @@
 char *CRYPTO_strdup(const char *str, const char* file, int line)
 {
     char *ret;
-    size_t len;
 
     if (str == NULL)
         return NULL;
-
-    len = strlen(str) + 1;
-    ret = CRYPTO_malloc(len, file, line);
+    ret = CRYPTO_malloc(strlen(str) + 1, file, line);
     if (ret != NULL)
-        memcpy(ret, str, len);
+        strcpy(ret, str);
     return ret;
 }
 

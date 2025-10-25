@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2007-2024 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright Nokia 2007-2020
  * Copyright Siemens AG 2015-2020
  *
@@ -12,6 +12,14 @@
 /* CMP functions for PKIMessage checking */
 
 #include "cmp_local.h"
+#include <openssl/cmp_util.h>
+
+/* explicit #includes not strictly needed since implied by the above: */
+#include <openssl/asn1t.h>
+#include <openssl/cmp.h>
+#include <openssl/crmf.h>
+#include <openssl/err.h>
+#include <openssl/x509.h>
 
 /* Verify a message protected by signature according to RFC section 5.1.3.3 */
 static int verify_signature(const OSSL_CMP_CTX *cmp_ctx,
@@ -243,7 +251,7 @@ static int cert_acceptable(const OSSL_CMP_CTX *ctx,
     int self_issued = X509_check_issued(cert, cert) == X509_V_OK;
     char *str;
     X509_VERIFY_PARAM *vpm = ts != NULL ? X509_STORE_get0_param(ts) : NULL;
-    int err;
+    int time_cmp;
 
     ossl_cmp_log3(INFO, ctx, " considering %s%s %s with..",
                   self_issued ? "self-issued ": "", desc1, desc2);
@@ -263,28 +271,14 @@ static int cert_acceptable(const OSSL_CMP_CTX *ctx,
         return 0;
     }
 
-    if (!ossl_x509_check_certificate_times(vpm, cert, &err)) {
-        const char *message;
+    time_cmp = X509_cmp_timeframe(vpm, X509_get0_notBefore(cert),
+                                  X509_get0_notAfter(cert));
+    if (time_cmp != 0) {
+        int err = time_cmp > 0 ? X509_V_ERR_CERT_HAS_EXPIRED
+                               : X509_V_ERR_CERT_NOT_YET_VALID;
 
-        switch (err) {
-        case X509_V_ERR_CERT_NOT_YET_VALID:
-            message = "cert is not yet valid";
-            break;
-        case X509_V_ERR_CERT_HAS_EXPIRED:
-            message = "cert has expired";
-            break;
-        case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-            message = "cert has an invalid not before field";
-            break;
-        case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-            message = "cert has an invalid not after field";
-            break;
-        default:
-            message = "cert is invalid for an unspecfied reason";
-            break;
-        }
-
-        ossl_cmp_warn(ctx, message);
+        ossl_cmp_warn(ctx, time_cmp > 0 ? "cert has expired"
+                                        : "cert is not yet valid");
         if (ctx->log_cb != NULL /* logging not temporarily disabled */
                 && verify_cb_cert(ts, cert, err) <= 0)
             return 0;
@@ -724,11 +718,6 @@ int ossl_cmp_msg_check_update(OSSL_CMP_CTX *ctx, const OSSL_CMP_MSG *msg,
     if (expected_sender != NULL) {
         const X509_NAME *actual_sender;
         char *str;
-
-        if (hdr->sender == NULL) {
-            ERR_raise(ERR_LIB_CMP, CMP_R_MISSING_SENDER_IDENTIFICATION);
-            return 0;
-        }
 
         if (hdr->sender->type != GEN_DIRNAME) {
             ERR_raise(ERR_LIB_CMP, CMP_R_SENDER_GENERALNAME_TYPE_NOT_SUPPORTED);

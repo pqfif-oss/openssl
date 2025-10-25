@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2020-2024 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -32,7 +32,6 @@
 #include "crypto/ec.h"
 #include "crypto/sm2.h"
 #include "prov/der_sm2.h"
-#include "providers/implementations/signature/sm2_sig.inc"
 
 static OSSL_FUNC_signature_newctx_fn sm2sig_newctx;
 static OSSL_FUNC_signature_sign_init_fn sm2sig_signature_init;
@@ -179,7 +178,7 @@ static int sm2sig_sign(void *vpsm2ctx, unsigned char *sig, size_t *siglen,
     if (ctx->mdsize != 0 && tbslen != ctx->mdsize)
         return 0;
 
-    ret = ossl_sm2_internal_sign(tbs, (int)tbslen, sig, &sltmp, ctx->ec);
+    ret = ossl_sm2_internal_sign(tbs, tbslen, sig, &sltmp, ctx->ec);
     if (ret <= 0)
         return 0;
 
@@ -195,7 +194,7 @@ static int sm2sig_verify(void *vpsm2ctx, const unsigned char *sig, size_t siglen
     if (ctx->mdsize != 0 && tbslen != ctx->mdsize)
         return 0;
 
-    return ossl_sm2_internal_verify(tbs, (int)tbslen, sig, (int)siglen, ctx->ec);
+    return ossl_sm2_internal_verify(tbs, tbslen, sig, siglen, ctx->ec);
 }
 
 static void free_md(PROV_SM2_CTX *ctx)
@@ -312,6 +311,7 @@ int sm2sig_digest_sign_final(void *vpsm2ctx, unsigned char *sig, size_t *siglen,
     return sm2sig_sign(vpsm2ctx, sig, siglen, sigsize, digest, (size_t)dlen);
 }
 
+
 int sm2sig_digest_verify_final(void *vpsm2ctx, const unsigned char *sig,
                                size_t siglen)
 {
@@ -399,45 +399,57 @@ static void *sm2sig_dupctx(void *vpsm2ctx)
 static int sm2sig_get_ctx_params(void *vpsm2ctx, OSSL_PARAM *params)
 {
     PROV_SM2_CTX *psm2ctx = (PROV_SM2_CTX *)vpsm2ctx;
-    struct sm2sig_get_ctx_params_st p;
+    OSSL_PARAM *p;
 
-    if (psm2ctx == NULL || !sm2sig_get_ctx_params_decoder(params, &p))
+    if (psm2ctx == NULL)
         return 0;
 
-    if (p.algid != NULL
-        && !OSSL_PARAM_set_octet_string(p.algid,
+    p = OSSL_PARAM_locate(params, OSSL_SIGNATURE_PARAM_ALGORITHM_ID);
+    if (p != NULL
+        && !OSSL_PARAM_set_octet_string(p,
                                         psm2ctx->aid_len == 0 ? NULL : psm2ctx->aid_buf,
                                         psm2ctx->aid_len))
         return 0;
 
-    if (p.size != NULL && !OSSL_PARAM_set_size_t(p.size, psm2ctx->mdsize))
+    p = OSSL_PARAM_locate(params, OSSL_SIGNATURE_PARAM_DIGEST_SIZE);
+    if (p != NULL && !OSSL_PARAM_set_size_t(p, psm2ctx->mdsize))
         return 0;
 
-    if (p.digest != NULL
-            && !OSSL_PARAM_set_utf8_string(p.digest, psm2ctx->md == NULL
-                                                     ? psm2ctx->mdname
-                                                     : EVP_MD_get0_name(psm2ctx->md)))
+    p = OSSL_PARAM_locate(params, OSSL_SIGNATURE_PARAM_DIGEST);
+    if (p != NULL && !OSSL_PARAM_set_utf8_string(p, psm2ctx->md == NULL
+                                                    ? psm2ctx->mdname
+                                                    : EVP_MD_get0_name(psm2ctx->md)))
         return 0;
 
     return 1;
 }
 
+static const OSSL_PARAM known_gettable_ctx_params[] = {
+    OSSL_PARAM_octet_string(OSSL_SIGNATURE_PARAM_ALGORITHM_ID, NULL, 0),
+    OSSL_PARAM_size_t(OSSL_SIGNATURE_PARAM_DIGEST_SIZE, NULL),
+    OSSL_PARAM_utf8_string(OSSL_SIGNATURE_PARAM_DIGEST, NULL, 0),
+    OSSL_PARAM_END
+};
+
 static const OSSL_PARAM *sm2sig_gettable_ctx_params(ossl_unused void *vpsm2ctx,
                                                     ossl_unused void *provctx)
 {
-    return sm2sig_get_ctx_params_list;
+    return known_gettable_ctx_params;
 }
 
 static int sm2sig_set_ctx_params(void *vpsm2ctx, const OSSL_PARAM params[])
 {
     PROV_SM2_CTX *psm2ctx = (PROV_SM2_CTX *)vpsm2ctx;
-    struct sm2sig_set_ctx_params_st p;
+    const OSSL_PARAM *p;
     size_t mdsize;
 
-    if (psm2ctx == NULL || !sm2sig_set_ctx_params_decoder(params, &p))
+    if (psm2ctx == NULL)
         return 0;
+    if (ossl_param_is_empty(params))
+        return 1;
 
-    if (p.distid != NULL) {
+    p = OSSL_PARAM_locate_const(params, OSSL_PKEY_PARAM_DIST_ID);
+    if (p != NULL) {
         void *tmp_id = NULL;
         size_t tmp_idlen = 0;
 
@@ -447,8 +459,8 @@ static int sm2sig_set_ctx_params(void *vpsm2ctx, const OSSL_PARAM params[])
         if (!psm2ctx->flag_compute_z_digest)
             return 0;
 
-        if (p.distid->data_size != 0
-            && !OSSL_PARAM_get_octet_string(p.distid, &tmp_id, 0, &tmp_idlen))
+        if (p->data_size != 0
+            && !OSSL_PARAM_get_octet_string(p, &tmp_id, 0, &tmp_idlen))
             return 0;
         OPENSSL_free(psm2ctx->id);
         psm2ctx->id = tmp_id;
@@ -461,14 +473,16 @@ static int sm2sig_set_ctx_params(void *vpsm2ctx, const OSSL_PARAM params[])
      * If there is ever any different digest algorithm allowed with SM2
      * this needs to be adjusted accordingly.
      */
-    if (p.size != NULL && (!OSSL_PARAM_get_size_t(p.size, &mdsize)
-                           || mdsize != psm2ctx->mdsize))
+    p = OSSL_PARAM_locate_const(params, OSSL_SIGNATURE_PARAM_DIGEST_SIZE);
+    if (p != NULL && (!OSSL_PARAM_get_size_t(p, &mdsize)
+                      || mdsize != psm2ctx->mdsize))
         return 0;
 
-    if (p.digest != NULL) {
+    p = OSSL_PARAM_locate_const(params, OSSL_SIGNATURE_PARAM_DIGEST);
+    if (p != NULL) {
         char *mdname = NULL;
 
-        if (!OSSL_PARAM_get_utf8_string(p.digest, &mdname, 0))
+        if (!OSSL_PARAM_get_utf8_string(p, &mdname, 0))
             return 0;
         if (!sm2sig_set_mdname(psm2ctx, mdname)) {
             OPENSSL_free(mdname);
@@ -480,10 +494,17 @@ static int sm2sig_set_ctx_params(void *vpsm2ctx, const OSSL_PARAM params[])
     return 1;
 }
 
+static const OSSL_PARAM known_settable_ctx_params[] = {
+    OSSL_PARAM_size_t(OSSL_SIGNATURE_PARAM_DIGEST_SIZE, NULL),
+    OSSL_PARAM_utf8_string(OSSL_SIGNATURE_PARAM_DIGEST, NULL, 0),
+    OSSL_PARAM_octet_string(OSSL_PKEY_PARAM_DIST_ID, NULL, 0),
+    OSSL_PARAM_END
+};
+
 static const OSSL_PARAM *sm2sig_settable_ctx_params(ossl_unused void *vpsm2ctx,
                                                     ossl_unused void *provctx)
 {
-    return sm2sig_set_ctx_params_list;
+    return known_settable_ctx_params;
 }
 
 static int sm2sig_get_ctx_md_params(void *vpsm2ctx, OSSL_PARAM *params)

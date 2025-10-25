@@ -89,12 +89,12 @@ extern "C" {
 
 # define OPENSSL_VERSION_TEXT "OpenSSL {- "$config{full_version} $config{release_date}" -}"
 
-/* Synthesize OPENSSL_VERSION_NUMBER with the layout 0xMNN00PP0L */
+/* Synthesize OPENSSL_VERSION_NUMBER with the layout 0xMNN00PPSL */
 # define OPENSSL_VERSION_NUMBER          \
     ( (OPENSSL_VERSION_MAJOR<<28)        \
       |(OPENSSL_VERSION_MINOR<<20)       \
       |(OPENSSL_VERSION_PATCH<<4)        \
-      |0x0L )
+      |{- @config{prerelease} ? "0x0L" : "0xfL" -} )
 
 # ifdef  __cplusplus
 }

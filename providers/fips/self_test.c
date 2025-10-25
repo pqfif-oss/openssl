@@ -18,7 +18,6 @@
 #include <openssl/rand.h>
 #include "internal/e_os.h"
 #include "internal/fips.h"
-#include "internal/threads_common.h"
 #include "internal/tsan_assist.h"
 #include "prov/providercommon.h"
 #include "crypto/rand.h"
@@ -174,7 +173,6 @@ DEP_INIT_ATTRIBUTE void init(void)
 DEP_FINI_ATTRIBUTE void cleanup(void)
 {
     CRYPTO_THREAD_lock_free(self_test_lock);
-    CRYPTO_THREAD_clean_local();
 }
 #endif
 

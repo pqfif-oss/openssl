@@ -185,8 +185,7 @@ static ossl_inline int ktls_read_record(int fd, void *data, size_t length)
     p[0] = tgr->tls_type;
     p[1] = tgr->tls_vmajor;
     p[2] = tgr->tls_vminor;
-    p[3] = (ret >> 8) & 0xff;
-    p[4] = ret & 0xff;
+    *(uint16_t *)(p + 3) = htons(ret);
 
     return ret + prepend_length;
 }
@@ -303,12 +302,6 @@ static ossl_inline int ktls_enable(int fd)
 static ossl_inline int ktls_start(int fd, ktls_crypto_info_t *crypto_info,
                                   int is_tx)
 {
-    /*
-     * Socket must be in TCP established state to enable KTLS.
-     * Further calls to enable ktls will return EEXIST
-     */
-    ktls_enable(fd);
-
     return setsockopt(fd, SOL_TLS, is_tx ? TLS_TX : TLS_RX,
                       crypto_info, crypto_info->tls_crypto_info_len) ? 0 : 1;
 }

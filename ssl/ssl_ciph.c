@@ -9,11 +9,6 @@
  * https://www.openssl.org/source/license.html
  */
 
-/*
- * Because of *asn1_*
- */
-#define OPENSSL_SUPPRESS_DEPRECATED
-
 #include <stdio.h>
 #include <ctype.h>
 #include <openssl/objects.h>
@@ -280,12 +275,11 @@ static const SSL_CIPHER cipher_aliases[] = {
 
 };
 
-#ifndef OPENSSL_NO_DEPRECATED_3_6
 /*
  * Search for public key algorithm with given name and return its pkey_id if
  * it is available. Otherwise return 0
  */
-# ifdef OPENSSL_NO_ENGINE
+#ifdef OPENSSL_NO_ENGINE
 
 static int get_optional_pkey_id(const char *pkey_name)
 {
@@ -298,7 +292,7 @@ static int get_optional_pkey_id(const char *pkey_name)
     return 0;
 }
 
-# else
+#else
 
 static int get_optional_pkey_id(const char *pkey_name)
 {
@@ -314,13 +308,7 @@ static int get_optional_pkey_id(const char *pkey_name)
     tls_engine_finish(tmpeng);
     return pkey_id;
 }
-# endif
-#else
-static int get_optional_pkey_id(const char *pkey_name)
-{
-    (void)pkey_name;
-    return 0;
-}
+
 #endif
 
 int ssl_load_ciphers(SSL_CTX *ctx)
@@ -948,7 +936,7 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
         curr = curr->next;
     }
 
-    number_uses = OPENSSL_calloc(max_strength_bits + 1, sizeof(int));
+    number_uses = OPENSSL_zalloc(sizeof(int) * (max_strength_bits + 1));
     if (number_uses == NULL)
         return 0;
 
@@ -1475,7 +1463,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
     num_of_ciphers = ssl_method->num_ciphers();
 
     if (num_of_ciphers > 0) {
-        co_list = OPENSSL_malloc_array(num_of_ciphers, sizeof(*co_list));
+        co_list = OPENSSL_malloc(sizeof(*co_list) * num_of_ciphers);
         if (co_list == NULL)
             return NULL;          /* Failure */
     }
@@ -1586,7 +1574,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
      */
     num_of_group_aliases = OSSL_NELEM(cipher_aliases);
     num_of_alias_max = num_of_ciphers + num_of_group_aliases + 1;
-    ca_list = OPENSSL_malloc_array(num_of_alias_max, sizeof(*ca_list));
+    ca_list = OPENSSL_malloc(sizeof(*ca_list) * num_of_alias_max);
     if (ca_list == NULL) {
         OPENSSL_free(co_list);
         return NULL;          /* Failure */

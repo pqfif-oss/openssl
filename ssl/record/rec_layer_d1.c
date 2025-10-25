@@ -672,7 +672,7 @@ int do_dtls1_write(SSL_CONNECTION *sc, uint8_t type, const unsigned char *buf,
               sc->rlayer.wrlmethod->write_records(sc->rlayer.wrl, &tmpl, 1));
 
     if (ret > 0)
-        *written = len;
+        *written = (int)len;
 
     return ret;
 }

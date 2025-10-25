@@ -63,16 +63,15 @@ CMS_RecipientInfo *CMS_add0_recipient_password(CMS_ContentInfo *cms,
     if (wrap_nid <= 0)
         wrap_nid = NID_id_alg_PWRI_KEK;
 
+    if (pbe_nid <= 0)
+        pbe_nid = NID_id_pbkdf2;
+
     /* Get from enveloped data */
     if (kekciph == NULL)
         kekciph = ec->cipher;
 
     if (kekciph == NULL) {
         ERR_raise(ERR_LIB_CMS, CMS_R_NO_CIPHER);
-        return NULL;
-    }
-    if ((EVP_CIPHER_get_flags(kekciph) & EVP_CIPH_FLAG_AEAD_CIPHER) != 0) {
-        ERR_raise(ERR_LIB_CMS, CMS_R_UNSUPPORTED_KEK_ALGORITHM);
         return NULL;
     }
     if (wrap_nid != NID_id_alg_PWRI_KEK) {
@@ -138,7 +137,7 @@ CMS_RecipientInfo *CMS_add0_recipient_password(CMS_ContentInfo *cms,
         ERR_raise(ERR_LIB_CMS, ERR_R_ASN1_LIB);
         goto err;
     }
-    ri->encoded_type = ri->type = CMS_RECIPINFO_PASS;
+    ri->type = CMS_RECIPINFO_PASS;
 
     pwri = ri->d.pwri;
     pwri->cms_ctx = cms_ctx;
@@ -203,18 +202,18 @@ static int kek_unwrap_key(unsigned char *out, size_t *outlen,
                           const unsigned char *in, size_t inlen,
                           EVP_CIPHER_CTX *ctx)
 {
-    int blocklen = EVP_CIPHER_CTX_get_block_size(ctx);
+    size_t blocklen = EVP_CIPHER_CTX_get_block_size(ctx);
     unsigned char *tmp;
     int outl, rv = 0;
 
-    if (blocklen <= 0)
+    if (blocklen == 0)
         return 0;
 
-    if (inlen < 2 * (size_t)blocklen) {
+    if (inlen < 2 * blocklen) {
         /* too small */
         return 0;
     }
-    if (inlen > INT_MAX || inlen % blocklen) {
+    if (inlen % blocklen) {
         /* Invalid size */
         return 0;
     }
@@ -231,19 +230,19 @@ static int kek_unwrap_key(unsigned char *out, size_t *outlen,
         || !EVP_DecryptUpdate(ctx, tmp, &outl,
                               tmp + inlen - blocklen, blocklen)
         /* Can now decrypt first n - 1 blocks */
-        || !EVP_DecryptUpdate(ctx, tmp, &outl, in, (int)(inlen - blocklen))
+        || !EVP_DecryptUpdate(ctx, tmp, &outl, in, inlen - blocklen)
 
         /* Reset IV to original value */
         || !EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, NULL)
         /* Decrypt again */
-        || !EVP_DecryptUpdate(ctx, tmp, &outl, tmp, (int)inlen))
+        || !EVP_DecryptUpdate(ctx, tmp, &outl, tmp, inlen))
         goto err;
     /* Check check bytes */
     if (((tmp[1] ^ tmp[4]) & (tmp[2] ^ tmp[5]) & (tmp[3] ^ tmp[6])) != 0xff) {
         /* Check byte failure */
         goto err;
     }
-    if (inlen < 4 + (size_t)tmp[0]) {
+    if (inlen < (size_t)(tmp[0] - 4)) {
         /* Invalid length value */
         goto err;
     }
@@ -294,8 +293,8 @@ static int kek_wrap_key(unsigned char *out, size_t *outlen,
                              olen - 4 - inlen, 0) <= 0)
             return 0;
         /* Encrypt twice */
-        if (!EVP_EncryptUpdate(ctx, out, &dummy, out, (int)olen)
-            || !EVP_EncryptUpdate(ctx, out, &dummy, out, (int)olen))
+        if (!EVP_EncryptUpdate(ctx, out, &dummy, out, olen)
+            || !EVP_EncryptUpdate(ctx, out, &dummy, out, olen))
             return 0;
     }
 
@@ -370,10 +369,10 @@ int ossl_cms_RecipientInfo_pwri_crypt(const CMS_ContentInfo *cms,
 
     /* Finish password based key derivation to setup key in "ctx" */
 
-    if (!EVP_PBE_CipherInit_ex(algtmp->algorithm,
-                               (char *)pwri->pass, (int)pwri->passlen,
-                               algtmp->parameter, kekctx, en_de,
-                               cms_ctx->libctx, cms_ctx->propq)) {
+    if (EVP_PBE_CipherInit_ex(algtmp->algorithm,
+                              (char *)pwri->pass, pwri->passlen,
+                              algtmp->parameter, kekctx, en_de,
+                              cms_ctx->libctx, cms_ctx->propq) < 0) {
         ERR_raise(ERR_LIB_CMS, ERR_R_EVP_LIB);
         goto err;
     }
@@ -393,7 +392,7 @@ int ossl_cms_RecipientInfo_pwri_crypt(const CMS_ContentInfo *cms,
         if (!kek_wrap_key(key, &keylen, ec->key, ec->keylen, kekctx, cms_ctx))
             goto err;
         pwri->encryptedKey->data = key;
-        pwri->encryptedKey->length = (int)keylen;
+        pwri->encryptedKey->length = keylen;
     } else {
         key = OPENSSL_malloc(pwri->encryptedKey->length);
         if (key == NULL)

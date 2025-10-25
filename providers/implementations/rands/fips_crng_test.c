@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2024 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -20,13 +20,11 @@
 #include "prov/providercommon.h"
 #include "prov/provider_ctx.h"
 #include "prov/implementations.h"
-#include "internal/common.h"
 #include "internal/cryptlib.h"
 #include "crypto/rand_pool.h"
-#include "prov/drbg.h"
+#include "drbg_local.h"
 #include "prov/seeding.h"
 #include "crypto/context.h"
-#include "providers/implementations/rands/fips_crng_test.inc"
 
 static OSSL_FUNC_rand_newctx_fn crng_test_new;
 static OSSL_FUNC_rand_freectx_fn crng_test_free;
@@ -111,7 +109,7 @@ static int RCT_test(CRNG_TEST *crngt, uint8_t next)
     /*
      * Critical values for this test are computed using:
      *
-     *      C = 1 + \left\lceil\frac{ -log_2 \alpha}H\right\rceil
+     *      C = 1 + \left\lceil\frac{-log_2 \alpha}H\right\rceil
      *
      * where alpha = 2^-20 and H is the expected entropy per sample.
      */
@@ -290,7 +288,7 @@ static size_t crng_test_get_seed(void *vcrngt, unsigned char **pout,
 {
     CRNG_TEST *crngt = (CRNG_TEST *)vcrngt;
     size_t n;
-    size_t r = 0;
+    int r = 0;
 
     /* Without a parent, we rely on the up calls */
     if (crngt->parent == NULL
@@ -366,28 +364,26 @@ static void crng_test_unlock(ossl_unused void *vcrngt)
 static int crng_test_get_ctx_params(void *vcrngt, OSSL_PARAM params[])
 {
     CRNG_TEST *crngt = (CRNG_TEST *)vcrngt;
-    struct crng_test_get_ctx_params_st p;
-
-    if (crngt == NULL)
-        return 0;
+    OSSL_PARAM *p;
 
     if (crngt->parent != NULL && crngt->parent_get_ctx_params != NULL)
         return crngt->parent_get_ctx_params(crngt->parent, params);
 
     /* No parent means we are using call backs for entropy */
-    if (!crng_test_get_ctx_params_decoder(params, &p))
+    p = OSSL_PARAM_locate(params, OSSL_RAND_PARAM_STATE);
+    if (p != NULL && !OSSL_PARAM_set_int(p, crngt->state))
         return 0;
 
-    if (p.state != NULL && !OSSL_PARAM_set_int(p.state, crngt->state))
+    p = OSSL_PARAM_locate(params, OSSL_RAND_PARAM_STRENGTH);
+    if (p != NULL && !OSSL_PARAM_set_int(p, 1024))
         return 0;
 
-    if (p.str != NULL && !OSSL_PARAM_set_uint(p.str, 1024))
+    p = OSSL_PARAM_locate(params, OSSL_RAND_PARAM_MAX_REQUEST);
+    if (p != NULL && !OSSL_PARAM_set_size_t(p, 128))
         return 0;
 
-    if (p.maxreq != NULL && !OSSL_PARAM_set_size_t(p.maxreq, 128))
-        return 0;
-
-    if (p.ind != NULL && !OSSL_PARAM_set_int(p.ind, 0))
+    p = OSSL_PARAM_locate(params, OSSL_RAND_PARAM_FIPS_APPROVED_INDICATOR);
+    if (p != NULL && !OSSL_PARAM_set_int(p, 0))
         return 0;
     return 1;
 }
@@ -396,10 +392,17 @@ static const OSSL_PARAM *crng_test_gettable_ctx_params(void *vcrngt,
                                                        void *provctx)
 {
     CRNG_TEST *crngt = (CRNG_TEST *)vcrngt;
+    static const OSSL_PARAM known_gettable_ctx_params[] = {
+        OSSL_PARAM_int(OSSL_RAND_PARAM_STATE, NULL),
+        OSSL_PARAM_uint(OSSL_RAND_PARAM_STRENGTH, NULL),
+        OSSL_PARAM_size_t(OSSL_RAND_PARAM_MAX_REQUEST, NULL),
+        OSSL_PARAM_int(OSSL_RAND_PARAM_FIPS_APPROVED_INDICATOR, NULL),
+        OSSL_PARAM_END
+    };
 
     if (crngt->parent != NULL && crngt->parent_gettable_ctx_params != NULL)
         return crngt->parent_gettable_ctx_params(crngt->parent, provctx);
-    return crng_test_get_ctx_params_list;
+    return known_gettable_ctx_params;
 }
 
 const OSSL_DISPATCH ossl_crng_test_functions[] = {

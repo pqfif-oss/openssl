@@ -1014,11 +1014,11 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
                                in, inl_);
 
     if (ossl_likely(ret)) {
-        if (ossl_unlikely(soutl > INT_MAX)) {
+        if (soutl > INT_MAX) {
             ERR_raise(ERR_LIB_EVP, EVP_R_UPDATE_ERROR);
             return 0;
         }
-        *outl = (int)soutl;
+        *outl = soutl;
     }
 
     return ret;
@@ -1078,7 +1078,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl)
             ERR_raise(ERR_LIB_EVP, EVP_R_FINAL_ERROR);
             return 0;
         }
-        *outl = (int)soutl;
+        *outl = soutl;
     }
 
     return ret;
@@ -1161,11 +1161,11 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
                                in, inl_);
 
     if (ossl_likely(ret)) {
-        if (ossl_unlikely(soutl > INT_MAX)) {
+        if (soutl > INT_MAX) {
             ERR_raise(ERR_LIB_EVP, EVP_R_UPDATE_ERROR);
             return 0;
         }
-        *outl = (int)soutl;
+        *outl = soutl;
     }
 
     return ret;
@@ -1300,7 +1300,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl)
             ERR_raise(ERR_LIB_EVP, EVP_R_FINAL_ERROR);
             return 0;
         }
-        *outl = (int)soutl;
+        *outl = soutl;
     }
 
     return ret;
@@ -1534,9 +1534,7 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         ret = evp_do_ciph_ctx_getparams(ctx->cipher, ctx->algctx, params);
         if (ret <= 0)
             goto end;
-        if (sz > INT_MAX)
-            return 0;
-        return (int)sz;
+        return sz;
 #ifndef OPENSSL_NO_RC2
     case EVP_CTRL_GET_RC2_KEY_BITS:
         set_params = 0; /* Fall thru */
@@ -1556,9 +1554,9 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 OSSL_CIPHER_PARAM_TLS1_MULTIBLOCK_MAX_BUFSIZE, &sz);
         params[1] = OSSL_PARAM_construct_end();
         ret = evp_do_ciph_ctx_getparams(ctx->cipher, ctx->algctx, params);
-        if (ret <= 0 || sz > INT_MAX)
+        if (ret <= 0)
             return 0;
-        return (int)sz;
+        return sz;
     case EVP_CTRL_TLS1_1_MULTIBLOCK_AAD: {
         EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *p =
             (EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *)ptr;
@@ -1580,9 +1578,9 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 OSSL_CIPHER_PARAM_TLS1_MULTIBLOCK_INTERLEAVE, &p->interleave);
         params[2] = OSSL_PARAM_construct_end();
         ret = evp_do_ciph_ctx_getparams(ctx->cipher, ctx->algctx, params);
-        if (ret <= 0 || sz > INT_MAX)
+        if (ret <= 0)
             return 0;
-        return (int)sz;
+        return sz;
     }
     case EVP_CTRL_TLS1_1_MULTIBLOCK_ENCRYPT: {
         EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *p =
@@ -1603,9 +1601,9 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         OSSL_CIPHER_PARAM_TLS1_MULTIBLOCK_ENC_LEN, &sz);
         params[1] = OSSL_PARAM_construct_end();
         ret = evp_do_ciph_ctx_getparams(ctx->cipher, ctx->algctx, params);
-        if (ret <= 0 || sz > INT_MAX)
+        if (ret <= 0)
             return 0;
-        return (int)sz;
+        return sz;
     }
 #endif /* OPENSSL_NO_MULTIBLOCK */
     case EVP_CTRL_AEAD_SET_MAC_KEY:

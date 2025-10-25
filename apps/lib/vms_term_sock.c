@@ -529,7 +529,7 @@ static int TerminalDeviceAst (int astparm)
                       TerminalDeviceAst,
                       0,
                       TerminalDeviceBuff,
-                      sizeof(TerminalDeviceBuff) - 2,
+                      sizeof(TerminalDeviceBuff) - 1,
                       0, 0, 0, 0);
 
     /*

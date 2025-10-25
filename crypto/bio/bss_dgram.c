@@ -810,16 +810,12 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
             }
 #  else
             socklen_t sz = sizeof(struct timeval);
-
             if ((ret = getsockopt(b->num, SOL_SOCKET, SO_RCVTIMEO,
                                   ptr, &sz)) < 0) {
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
                                "calling getsockopt()");
-            } else if (!ossl_assert((size_t)sz == sizeof(struct timeval))) {
-                ERR_raise_data(ERR_LIB_BIO, ERR_R_INTERNAL_ERROR,
-                               "Unexpected getsockopt(SO_RCVTIMEO) return size");
-                ret = -1;
             } else {
+                OPENSSL_assert((size_t)sz <= sizeof(struct timeval));
                 ret = (int)sz;
             }
 #  endif
@@ -869,11 +865,8 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
                                   ptr, &sz)) < 0) {
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
                                "calling getsockopt()");
-            } else if (!ossl_assert((size_t)sz == sizeof(struct timeval))) {
-                ERR_raise_data(ERR_LIB_BIO, ERR_R_INTERNAL_ERROR,
-                               "Unexpected getsockopt(SO_SNDTIMEO) return size");
-                ret = -1;
             } else {
+                OPENSSL_assert((size_t)sz <= sizeof(struct timeval));
                 ret = (int)sz;
             }
 #  endif
@@ -939,8 +932,8 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
                                "calling setsockopt()");
 
-#  elif defined(OPENSSL_SYS_LINUX) && defined(IPV6_MTU_DISCOVER)
-            sockopt_val = num ? IPV6_PMTUDISC_PROBE : IPV6_PMTUDISC_DONT;
+#  elif defined(OPENSSL_SYS_LINUX) && defined(IPV6_MTUDISCOVER)
+            sockopt_val = num ? IP_PMTUDISC_PROBE : IP_PMTUDISC_DONT;
             if ((ret = setsockopt(b->num, IPPROTO_IPV6, IPV6_MTU_DISCOVER,
                                   &sockopt_val, sizeof(sockopt_val))) < 0)
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
@@ -1028,12 +1021,10 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
 
 static int dgram_puts(BIO *bp, const char *str)
 {
-    int ret;
-    size_t n = strlen(str);
+    int n, ret;
 
-    if (n > INT_MAX)
-        return -1;
-    ret = dgram_write(bp, str, (int)n);
+    n = strlen(str);
+    ret = dgram_write(bp, str, n);
     return ret;
 }
 
@@ -1609,7 +1600,7 @@ static int dgram_recvmmsg(BIO *b, BIO_MSG *msg,
                  * address, as for OS X and Windows in some circumstances
                  * (see below).
                  */
-                BIO_ADDR_clear(BIO_MSG_N(msg, stride, i).local);
+                BIO_ADDR_clear(msg->local);
     }
 
     *num_processed = (size_t)ret;
@@ -2022,10 +2013,7 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
             if (msg.msg_flags & MSG_NOTIFICATION) {
                 union sctp_notification snp;
 
-                if (n < (int)sizeof(snp.sn_header))
-                    return -1;
-                memset(&snp, 0, sizeof(snp));
-                memcpy(&snp, out, (size_t)n < sizeof(snp) ? (size_t)n : sizeof(snp));
+                memcpy(&snp, out, sizeof(snp));
                 if (snp.sn_header.sn_type == SCTP_SENDER_DRY_EVENT) {
 #  ifdef SCTP_EVENT
                     struct sctp_event event;
@@ -2074,6 +2062,7 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
                     data->handle_notifications(b, data->notification_context,
                                                (void *)out);
 
+                memset(&snp, 0, sizeof(snp));
                 memset(out, 0, outl);
             } else {
                 ret += n;
@@ -2098,8 +2087,8 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
              */
             optlen = (socklen_t) sizeof(int);
             ret = getsockopt(b->num, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-            if (ret >= 0 && !ossl_assert(optval >= 18445))
-                return -1;
+            if (ret >= 0)
+                OPENSSL_assert(optval >= 18445);
 
             /*
              * Test if SCTP doesn't partially deliver below max record size
@@ -2109,14 +2098,13 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
             ret =
                 getsockopt(b->num, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT,
                            &optval, &optlen);
-            if (ret >= 0 && !ossl_assert(optval >= 18445))
-                return -1;
+            if (ret >= 0)
+                OPENSSL_assert(optval >= 18445);
 
             /*
              * Partially delivered notification??? Probably a bug....
              */
-            if (!ossl_assert((msg.msg_flags & MSG_NOTIFICATION) == 0))
-                return -1;
+            OPENSSL_assert(!(msg.msg_flags & MSG_NOTIFICATION));
 
             /*
              * Everything seems ok till now, so it's most likely a message

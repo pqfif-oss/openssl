@@ -10,6 +10,15 @@
  */
 
 #include "cmp_local.h"
+#include "internal/cryptlib.h"
+
+/* explicit #includes not strictly needed since implied by the above: */
+#include <openssl/bio.h>
+#include <openssl/cmp.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/x509v3.h>
+#include <openssl/cmp_util.h>
 
 #define IS_CREP(t) ((t) == OSSL_CMP_PKIBODY_IP || (t) == OSSL_CMP_PKIBODY_CP \
                         || (t) == OSSL_CMP_PKIBODY_KUP)
@@ -369,7 +378,7 @@ static int poll_for_response(OSSL_CMP_CTX *ctx, int sleep, int rid,
         } else {
             ossl_cmp_info(ctx, "received final response after polling");
             if (!ossl_cmp_ctx_set1_first_senderNonce(ctx, NULL))
-                goto err;
+                return 0;
             break;
         }
     }
@@ -830,7 +839,7 @@ int OSSL_CMP_try_certreq(OSSL_CMP_CTX *ctx, int req_type,
             goto err;
 
         if (!save_senderNonce_if_waiting(ctx, rep, rid))
-            goto err;
+            return 0;
     } else {
         if (req_type < 0)
             return ossl_cmp_exchange_error(ctx, OSSL_CMP_PKISTATUS_rejection,
@@ -873,7 +882,7 @@ X509 *OSSL_CMP_exec_certreq(OSSL_CMP_CTX *ctx, int req_type,
         goto err;
 
     if (!save_senderNonce_if_waiting(ctx, rep, rid))
-        goto err;
+        return 0;
 
     if (cert_response(ctx, 1 /* sleep */, rid, &rep, NULL, req_type, rep_type)
         <= 0)

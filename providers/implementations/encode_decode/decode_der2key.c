@@ -40,11 +40,10 @@
 #include "openssl/obj_mac.h"
 #include "prov/bio.h"
 #include "prov/implementations.h"
-#include "prov/endecoder_local.h"
+#include "endecoder_local.h"
 #include "internal/nelem.h"
-#include "prov/ml_dsa_codecs.h"
-#include "prov/ml_kem_codecs.h"
-#include "providers/implementations/encode_decode/decode_der2key.inc"
+#include "ml_dsa_codecs.h"
+#include "ml_kem_codecs.h"
 
 #ifndef OPENSSL_NO_SLH_DSA
 typedef struct {
@@ -172,21 +171,21 @@ der2key_newctx(void *provctx, const struct keytype_desc_st *desc)
 
 static const OSSL_PARAM *der2key_settable_ctx_params(ossl_unused void *provctx)
 {
-    return der2key_set_ctx_params_list;
+    static const OSSL_PARAM settables[] = {
+        OSSL_PARAM_utf8_string(OSSL_DECODER_PARAM_PROPERTIES, NULL, 0),
+        OSSL_PARAM_END
+    };
+    return settables;
 }
 
 static int der2key_set_ctx_params(void *vctx, const OSSL_PARAM params[])
 {
     struct der2key_ctx_st *ctx = vctx;
-    struct der2key_set_ctx_params_st p;
-    char *str;
+    const OSSL_PARAM *p;
+    char *str = ctx->propq;
 
-    if (ctx == NULL || !der2key_set_ctx_params_decoder(params, &p))
-        return 0;
-
-    str = ctx->propq;
-    if (p.propq != NULL
-            && !OSSL_PARAM_get_utf8_string(p.propq, &str, sizeof(ctx->propq)))
+    p = OSSL_PARAM_locate_const(params, OSSL_DECODER_PARAM_PROPERTIES);
+    if (p != NULL && !OSSL_PARAM_get_utf8_string(p, &str, sizeof(ctx->propq)))
         return 0;
 
     return 1;
