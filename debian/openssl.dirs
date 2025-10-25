@@ -1,4 +1,4 @@
 etc/ssl/certs
 etc/ssl/private
-usr/bin
-usr/lib
+usr/local/openssl/3.5.3/bin
+usr/local/openssl/3.5.3/lib

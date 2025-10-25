@@ -1,2 +1,2 @@
-usr/lib
-usr/share/doc/libssl-dev
+usr/local/openssl/3.5.3/lib
+usr/local/openssl/3.5.3/share/doc/libssl-dev

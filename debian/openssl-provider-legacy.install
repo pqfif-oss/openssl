@@ -1,1 +1,1 @@
-usr/lib/*/ossl-modules/legacy.so
+usr/local/openssl/3.5.3/lib/*/ossl-modules/legacy.so

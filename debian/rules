@@ -108,35 +108,35 @@ override_dh_auto_install-indep:
 	# usr/lib/ssl/cert is a symlink to a non existing target.
 	if [ ! -L debian/tmp/usr/lib/ssl/certs ]; then \
 		$(MAKE) -C build_shared install DESTDIR=`pwd`/debian/tmp ;\
-		mkdir -p debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl ;\
-		mv debian/tmp/usr/include/openssl/opensslconf.h debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
-		mv debian/tmp/usr/include/openssl/configuration.h debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
+		mkdir -p debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl ;\
+		mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/opensslconf.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
+		mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/configuration.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
 	fi
 
 override_dh_auto_install-arch:
 	$(MAKE) -C build_shared install DESTDIR=`pwd`/debian/tmp
 	# pic static libraries, nobody should need them
-	cp -pf build_shared/libcrypto.a debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libcrypto.a
-	cp -pf build_shared/libssl.a debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libssl.a
+	cp -pf build_shared/libcrypto.a debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libcrypto.a
+	cp -pf build_shared/libssl.a debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libssl.a
 	mkdir -p debian/tmp/etc/ssl
 	mv debian/tmp/usr/lib/ssl/{certs,openssl.cnf,private} debian/tmp/etc/ssl/
 	ln -s /etc/ssl/{certs,openssl.cnf,private} debian/tmp/usr/lib/ssl/
 	ln -s /etc/ssl/certs/ca-certificates.crt debian/tmp/usr/lib/ssl/cert.pem
 ifeq (,$(filter noudeb,$(DEB_BUILD_PROFILES)))
-	cp -pf debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libcrypto.so.* debian/libcrypto3-udeb/usr/lib/
-	cp -pf debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ossl-modules/*.so debian/libcrypto3-udeb/usr/lib/ossl-modules
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libcrypto.so.* debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/ossl-modules/*.so debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/ossl-modules
 	cp -pf debian/tmp/etc/ssl/openssl.cnf debian/libcrypto3-udeb/usr/lib/ssl/openssl.cnf
-	cp -pf debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libssl.so.* debian/libssl3-udeb/usr/lib/
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libssl.so.* debian/libssl3-udeb/usr/local/openssl/3.5.3/lib/
 endif
-	cp -auv build_shared/lib*.so* debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/
+	cp -auv build_shared/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/
 	for opt in $(OPTS); \
 		do set -xe; \
-		mkdir -p debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/$$opt; \
-		cp -auv build_$$opt/lib*.so* debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/$$opt/; \
+		mkdir -p debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/$$opt; \
+		cp -auv build_$$opt/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/$$opt/; \
 	done
-	mkdir -p debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl
-	mv debian/tmp/usr/include/openssl/opensslconf.h debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl/
-	mv debian/tmp/usr/include/openssl/configuration.h debian/tmp/usr/include/$(DEB_HOST_MULTIARCH)/openssl/
+	mkdir -p debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl
+	mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/opensslconf.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/
+	mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/configuration.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/
 
 override_dh_installchangelogs:
 	dh_installchangelogs CHANGES.md
@@ -156,7 +156,7 @@ override_dh_compress:
 	# NB: pkgstripfiles is not done in PPAs
 	for p in openssl libssl-dev; do \
 	  for f in changelog.Debian.gz copyright; do \
-	    ln -sf ../$(library_package)/$$f debian/$$p/usr/share/doc/$$p/$$f; \
+	    ln -sf ../$(library_package)/$$f debian/$$p/usr/local/openssl/3.5.3/share/doc/$$p/$$f; \
 	  done; \
 	done
 
