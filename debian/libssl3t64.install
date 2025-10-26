@@ -1,2 +1,2 @@
-usr/local/openssl/3.5.3/lib/*/*.so.*
-usr/local/openssl/3.5.3/lib/*/engines-*/*.so
+usr/local/openssl/3.5.3/lib/*.so.*
+usr/local/openssl/3.5.3/lib/engines-*/*.so
