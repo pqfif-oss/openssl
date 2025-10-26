@@ -30,7 +30,7 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 	MAKEFLAGS += -j$(NUMJOBS)
 endif
 
-CONFARGS  = --prefix=/usr/local/openssl/3.5.3 --openssldir=/usr/local/openssl/3.5.3/lib/ssl --libdir=lib/$(DEB_HOST_MULTIARCH) no-idea no-mdc2 no-rc5 no-ssl3 enable-unit-test no-ssl3-method enable-rfc3779 enable-cms no-capieng no-rdrand \
+CONFARGS  = --prefix=/usr/local/openssl/3.5.3 --openssldir=/usr/local/openssl/3.5.3/lib/ssl --libdir=lib no-idea no-mdc2 no-rc5 no-ssl3 enable-unit-test no-ssl3-method enable-rfc3779 enable-cms no-capieng no-rdrand \
 	    enable-tfo enable-zstd enable-zlib no-fips
 #OPT_alpha = ev4 ev5
 ARCHOPTS  = OPT_$(DEB_HOST_ARCH)
@@ -108,35 +108,29 @@ override_dh_auto_install-indep:
 	# usr/lib/ssl/cert is a symlink to a non existing target.
 	if [ ! -L debian/tmp/usr/local/openssl/3.5.3/lib/ssl/certs ]; then \
 		$(MAKE) -C build_shared install DESTDIR=`pwd`/debian/tmp ;\
-		mkdir -p debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl ;\
-		mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/opensslconf.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
-		mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/configuration.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/ ;\
 	fi
 
 override_dh_auto_install-arch:
 	$(MAKE) -C build_shared install DESTDIR=`pwd`/debian/tmp
 	# pic static libraries, nobody should need them
-	cp -pf build_shared/libcrypto.a debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libcrypto.a
-	cp -pf build_shared/libssl.a debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libssl.a
+	cp -pf build_shared/libcrypto.a debian/tmp/usr/local/openssl/3.5.3/lib/libcrypto.a
+	cp -pf build_shared/libssl.a debian/tmp/usr/local/openssl/3.5.3/lib/libssl.a
 	mkdir -p debian/tmp/etc/ssl
 	mv debian/tmp/usr/local/openssl/3.5.3/lib/ssl/{certs,openssl.cnf,private} debian/tmp/etc/ssl/
 	ln -s /etc/ssl/{certs,openssl.cnf,private} debian/tmp/usr/local/openssl/3.5.3/lib/ssl/
 	ln -s /etc/ssl/certs/ca-certificates.crt debian/tmp/usr/local/openssl/3.5.3/lib/ssl/cert.pem
 ifeq (,$(filter noudeb,$(DEB_BUILD_PROFILES)))
-	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libcrypto.so.* debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/
-	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/ossl-modules/*.so debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/ossl-modules
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/libcrypto.so.* debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/ossl-modules/*.so debian/libcrypto3-udeb/usr/local/openssl/3.5.3/lib/ossl-modules
 	cp -pf debian/tmp/etc/ssl/openssl.cnf debian/libcrypto3-udeb/usr/lib/ssl/openssl.cnf
-	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/libssl.so.* debian/libssl3-udeb/usr/local/openssl/3.5.3/lib/
+	cp -pf debian/tmp/usr/local/openssl/3.5.3/lib/libssl.so.* debian/libssl3-udeb/usr/local/openssl/3.5.3/lib/
 endif
-	cp -auv build_shared/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/
+	cp -auv build_shared/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/
 	for opt in $(OPTS); \
 		do set -xe; \
-		mkdir -p debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/$$opt; \
-		cp -auv build_$$opt/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/$(DEB_HOST_MULTIARCH)/$$opt/; \
+		mkdir -p debian/tmp/usr/local/openssl/3.5.3/lib/$$opt; \
+		cp -auv build_$$opt/lib*.so* debian/tmp/usr/local/openssl/3.5.3/lib/$$opt/; \
 	done
-	mkdir -p debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl
-	mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/opensslconf.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/
-	mv debian/tmp/usr/local/openssl/3.5.3/include/openssl/configuration.h debian/tmp/usr/local/openssl/3.5.3/include/$(DEB_HOST_MULTIARCH)/openssl/
 
 override_dh_installchangelogs:
 	dh_installchangelogs CHANGES.md
