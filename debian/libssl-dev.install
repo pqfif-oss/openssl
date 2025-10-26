@@ -1,8 +1,7 @@
-usr/local/openssl/3.5.3/lib/*/cmake/OpenSSL/*
-usr/local/openssl/3.5.3/lib/*/libcrypto.a
-usr/local/openssl/3.5.3/lib/*/libcrypto.so
-usr/local/openssl/3.5.3/lib/*/libssl.a
-usr/local/openssl/3.5.3/lib/*/libssl.so
-usr/local/openssl/3.5.3/lib/*/pkgconfig
+usr/local/openssl/3.5.3/lib/cmake/OpenSSL/*
+usr/local/openssl/3.5.3/lib/libcrypto.a
+usr/local/openssl/3.5.3/lib/libcrypto.so
+usr/local/openssl/3.5.3/lib/libssl.a
+usr/local/openssl/3.5.3/lib/libssl.so
+usr/local/openssl/3.5.3/lib/pkgconfig
 usr/local/openssl/3.5.3/include/openssl/*
-usr/local/openssl/3.5.3/include/*/openssl
