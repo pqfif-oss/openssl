@@ -19,3 +19,4 @@
 /doc/crypto.pod
 /doc/openssl.pod
 /doc/ssl.pod
+Makefile.in
